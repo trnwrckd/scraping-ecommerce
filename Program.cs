@@ -1,12 +1,28 @@
 ﻿using HtmlAgilityPack;
 using Newtonsoft.Json;
-using intro;
 
 namespace intro
 {
     class Program
     {
+        public static List<ProductBrand>  brands = new List<ProductBrand>();
+        public static int brandId = 0;
         public static List<string>  productUrls = new List<string>();
+        public static void GetBrands (string url){
+            // extract brandName from URL
+            var brand = url.Substring(url.Remove(url.Length - 1, 1).LastIndexOf('/') + 1);
+            // add to list
+            brands.Add(
+                new ProductBrand
+                {
+                    Id = brandId,
+                    Brand = brand.Remove(brand.Length - 1),
+                    Url = url
+                }
+            );
+
+            brandId++;
+        }
         public static void ScrapeThisPage( String url ){
             // scrape current page and get links for all product
             HtmlWeb web = new HtmlWeb();
@@ -27,9 +43,10 @@ namespace intro
                 ScrapeThisPage(nextPageUrl);
             }
         }
-
         public static void ExtractJsonFromUrl( string url ){
-            
+            // create product class
+            // analyze what infos can be extracted from site
+            // append to product list
         }
         static void Main(string[] args)
         {
@@ -44,24 +61,10 @@ namespace intro
             );
 
             // get all brands
-            var brands = new List<ProductBrand>();
-            var brandId = 0;
-
             foreach (var anchor in BrandAnchors)
             {
                 var url = anchor.Attributes["href"].Value;
-                var brand = url.Substring(url.Remove(url.Length - 1, 1).LastIndexOf('/') + 1);
-
-                brands.Add(
-                    new ProductBrand
-                    {
-                        Id = brandId,
-                        Brand = brand.Remove(brand.Length - 1),
-                        Url = url
-                    }
-                );
-
-                brandId++;
+                GetBrands(url);
             }
             
             // removing accessories for now
@@ -71,16 +74,18 @@ namespace intro
             foreach (var brand in brands)
                 ScrapeThisPage(brand.Url);
 
-            foreach(var productUrl in productUrls){
+            // for each product extract data
+            foreach(var productUrl in productUrls)
                 ExtractJsonFromUrl(productUrl);
-            }
-
+            
+            // print total 
             Console.WriteLine(brands.Count() + " Brands found.");
             Console.WriteLine(productUrls.Count() + " Products found.");
 
             //write brands to file
                 // string brandsListJson = JsonConvert.SerializeObject(brands.ToArray());
                 // System.IO.File.WriteAllText(@"brands.json", brandsListJson);
+                
             // completed
             Console.WriteLine("Scraping Completed!");
         }
