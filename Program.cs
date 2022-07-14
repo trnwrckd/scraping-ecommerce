@@ -1,47 +1,86 @@
 ﻿using HtmlAgilityPack;
 using Newtonsoft.Json;
+using intro;
 
 namespace intro
 {
     class Program
     {
-        public class Row
-        {
-            public string? Title { get; set; }
-            
-        }
-        public class ProductCategory{
-            public int Id {get; set;}
-            public string? Category {get;set;}
-            public string? Url {get;set;}
+        public static List<string>  productUrls = new List<string>();
+        public static void ScrapeThisPage( String url ){
+            // scrape current page and get links for all product
+            HtmlWeb web = new HtmlWeb();
+            HtmlDocument Page = web.Load(url);
+            var ProductAnchors = Page.DocumentNode.SelectNodes(
+                "//div/h3[@class = 'product-title']/a"
+            );
+            foreach (var productAnchor in ProductAnchors)
+            {
+                var productUrl = productAnchor.Attributes["href"].Value;
+                productUrls.Add(productUrl);
+            }
+
+            // if there's a next page, scrape that too
+            var nextPageBtn = Page.DocumentNode.SelectNodes("//nav/ul/li/a[@class = 'next page-numbers']");
+            if(nextPageBtn != null){
+                var nextPageUrl = nextPageBtn.First().Attributes["href"].Value;
+                ScrapeThisPage(nextPageUrl);
+            }
         }
 
+        public static void ExtractJsonFromUrl( string url ){
+            
+        }
         static void Main(string[] args)
         {
-            HtmlWeb web = new HtmlWeb();
             DotNetEnv.Env.Load();
-            HtmlDocument doc = web.Load(Environment.GetEnvironmentVariable("WEBSITE_URL"));
+            HtmlWeb web = new HtmlWeb();
+            var SiteUrl = Environment.GetEnvironmentVariable("WEBSITE_URL");
+            HtmlDocument doc = web.Load(SiteUrl);
 
-            // category 
-            var CategoryAnchors = doc.DocumentNode.SelectNodes("/html/body/div[1]/header/div/div[3]/div/div/div[1]/div/div/div/div/ul/li    /a[@class = 'woodmart-nav-link']");
-            
-            var categories = new List<ProductCategory>();
-            var categoryId = 0;
-            foreach(var anchor in CategoryAnchors){
+            // getting category list and urls from sideNav
+            var BrandAnchors = doc.DocumentNode.SelectNodes(
+                "/html/body/div[1]/header/div/div[3]/div/div/div[1]/div/div/div/div/ul/li/a[@class = 'woodmart-nav-link']"
+            );
+
+            // get all brands
+            var brands = new List<ProductBrand>();
+            var brandId = 0;
+
+            foreach (var anchor in BrandAnchors)
+            {
                 var url = anchor.Attributes["href"].Value;
-                var category = url.Substring(url.Remove(url.Length - 1, 1).LastIndexOf('/') + 1);
-                categories.Add(new ProductCategory{
-                    Id = categoryId,
-                    Category = category.Remove(category.Length - 1),
-                    Url = url
-                });
-                categoryId++;
+                var brand = url.Substring(url.Remove(url.Length - 1, 1).LastIndexOf('/') + 1);
+
+                brands.Add(
+                    new ProductBrand
+                    {
+                        Id = brandId,
+                        Brand = brand.Remove(brand.Length - 1),
+                        Url = url
+                    }
+                );
+
+                brandId++;
             }
             
-            string json = JsonConvert.SerializeObject(categories.ToArray());
+            // removing accessories for now
+            brands.RemoveAt(brands.Count - 1);
 
-            //write string to file
-            System.IO.File.WriteAllText(@"categories.json", json);
+            // for each brand get all products
+            foreach (var brand in brands)
+                ScrapeThisPage(brand.Url);
+
+            foreach(var productUrl in productUrls){
+                ExtractJsonFromUrl(productUrl);
+            }
+
+            Console.WriteLine(brands.Count() + " Brands found.");
+            Console.WriteLine(productUrls.Count() + " Products found.");
+
+            //write brands to file
+                // string brandsListJson = JsonConvert.SerializeObject(brands.ToArray());
+                // System.IO.File.WriteAllText(@"brands.json", brandsListJson);
             // completed
             Console.WriteLine("Scraping Completed!");
         }
