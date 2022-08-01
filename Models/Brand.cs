@@ -1,7 +1,9 @@
-namespace intro{
-    public class ProductBrand{
-            public int Id {get; set;}
-            public string Brand {get;set;} = String.Empty;
-            public string Url {get;set;} = String.Empty;
-        }
+namespace intro
+{
+    public class Brand
+    {
+        public int Id { get; set; }
+        public string BrandName { get; set; } = String.Empty;
+        public string Url { get; set; } = String.Empty;
+    }
 }
